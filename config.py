@@ -24,4 +24,5 @@ helius_tk = config['passkeys']['helius']
 
 hostname = socket.gethostname()    
 base = socket.gethostbyname(hostname)
-print(base)
+if base == "127.0.1.1":
+    base = socket.gethostbyname(hostname + ".local")
