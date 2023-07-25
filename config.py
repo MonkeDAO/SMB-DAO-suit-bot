@@ -24,3 +24,4 @@ helius_tk = config['passkeys']['helius']
 
 hostname = socket.gethostname()    
 base = socket.gethostbyname(hostname)
+print(base)
