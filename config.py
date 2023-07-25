@@ -22,7 +22,11 @@ gen3List = {}
 
 helius_tk = config['passkeys']['helius']
 
-hostname = socket.gethostname()    
-base = socket.gethostbyname(hostname)
-if base == "127.0.1.1":
-    base = socket.gethostbyname(hostname + ".local")
+try:
+    base = socket.gethostbyname(socket.gethostname())
+except:
+    base = ''
+if not base or base.startswith('127.'):
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(('4.2.2.1', 0))
+    base = s.getsockname()[0]
