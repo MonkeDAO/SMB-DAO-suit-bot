@@ -23,7 +23,6 @@ async def image(request):
     if gen == 2:
         for i in gen2List:
             if int(i['mint']["name"].split("#")[1]) == id:
-                monke = i
                 async with aiohttp.ClientSession() as session:
                     async with session.get(i['mint']['imageUri']) as resp:
                         img = await resp.read()

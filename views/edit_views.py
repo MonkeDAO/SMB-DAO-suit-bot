@@ -14,6 +14,7 @@ class DressUpViewGen2(discord.ui.View):
         else:
             self.url = self.url.replace("bg=true","bg=false")
         self.embed.set_image(url=self.url)
+        print(self.url)
         await interaction.response.edit_message(embed=self.embed)
         
 

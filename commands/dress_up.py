@@ -20,6 +20,7 @@ async def dressup(interaction: discord.Interaction, generation: int, monke: int)
             await interaction.followup.send("The monke you tried to use could not be found", ephemeral=True)
             return
         url = "http://" + base + ":8080" + "/image?gen=2&id=" + str(monke['mint']['name'].split("#")[1]) + "&bg=true"
+        print(url)
         embed = discord.Embed()
         embed.set_image(url=url)
         await interaction.followup.send(embed=embed, view=DressUpViewGen2(embed, url))
