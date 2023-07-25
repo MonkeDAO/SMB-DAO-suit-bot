@@ -4,7 +4,24 @@ from discord.ext import commands
 import traceback
 from config import bot, dc_tk
 import asyncio
-from commands.test import test #type: ignore
+import logging
+from aiohttp import web
+from commands.dress_up import dressup #type: ignore
+from tasks.tasks import update_gen3
+from web.web import app
+
+logging.basicConfig(level=logging.INFO)
+
+async def run_server():
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '127.0.0.1', 8080)
+    await site.start()
+
+def error_handler(task: asyncio.Task):
+    exc = task.exception()
+    if exc:
+        traceback.print_exception(type(exc), exc, exc.__traceback__)
 
 @bot.tree.error
 async def command_errors(
@@ -17,7 +34,11 @@ async def command_errors(
 @bot.event
 async def on_ready():
     print(f'We have logged in as {bot.user}')
-    
+    if update_gen3.is_running():
+        update_gen3.restart()
+    else:
+        update_gen3.start()
+
 @bot.command(name="sync")
 @commands.is_owner()
 async def sync(ctx):
@@ -26,6 +47,8 @@ async def sync(ctx):
 
 async def main():
     async with bot:
+        web = bot.loop.create_task(run_server())
+        web.add_done_callback(error_handler)
         await bot.start(dc_tk)
 
 asyncio.run(main())
