@@ -2,7 +2,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import traceback
-from config import bot, dc_tk
+from config import bot, dc_tk, base
 import asyncio
 import logging
 from aiohttp import web
@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO)
 async def run_server():
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, '127.0.0.1', 8080)
+    site = web.TCPSite(runner, base, 8080)
     await site.start()
 
 def error_handler(task: asyncio.Task):

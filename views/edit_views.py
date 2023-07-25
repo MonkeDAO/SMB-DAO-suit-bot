@@ -1,8 +1,4 @@
-from typing import Optional
-from PIL import Image
 import discord
-import asyncio
-from io import BytesIO
 from discord.enums import ButtonStyle
 
 class DressUpViewGen2(discord.ui.View):

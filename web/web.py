@@ -1,5 +1,5 @@
 from aiohttp import web
-from config import gen2List, gen3List
+from config import gen2List, gen3List #type: ignore
 import aiohttp
 import asyncio
 from PIL import Image

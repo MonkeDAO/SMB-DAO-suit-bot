@@ -3,11 +3,7 @@ sys.path.append('..')
 import discord
 from discord.app_commands import Choice
 from views.edit_views import DressUpViewGen2
-from config import bot, gen2List, gen3List, base
-from PIL import Image
-import asyncio
-from io import BytesIO
-import aiohttp
+from config import bot, gen2List, gen3List, base #type: ignore
 
 @bot.tree.command(name="dress-up", description="Dress up your monke!")
 async def dressup(interaction: discord.Interaction, generation: int, monke: int):
@@ -23,7 +19,7 @@ async def dressup(interaction: discord.Interaction, generation: int, monke: int)
         if type(monke) == int:
             await interaction.followup.send("The monke you tried to use could not be found", ephemeral=True)
             return
-        url = base + "/image?gen=2&id=" + str(monke['mint']['name'].split("#")[1]) + "&bg=true"
+        url = "http://" + base + ":8080" + "/image?gen=2&id=" + str(monke['mint']['name'].split("#")[1]) + "&bg=true"
         embed = discord.Embed()
         embed.set_image(url=url)
         await interaction.followup.send(embed=embed, view=DressUpViewGen2(embed, url))
