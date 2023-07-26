@@ -1,7 +1,6 @@
 from discord.ext import commands
 import discord
 import json
-import socket
 
 with open('config.json') as f:
     config = json.load(f)

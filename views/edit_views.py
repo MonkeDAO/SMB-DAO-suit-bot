@@ -3,8 +3,6 @@ import discord
 import asyncio
 from io import BytesIO
 from discord.enums import ButtonStyle
-from config import imgur_client_id, imgur_client_secret
-import aiohttp
 
 async def common_color(img: Image) -> tuple:
     pixels = await asyncio.get_event_loop().run_in_executor(None, img.getcolors)
@@ -22,6 +20,7 @@ class DressUpViewGen2(discord.ui.View):
         self.msgid = id
         self.embed = embed
         self.background = True
+        super().__init__(timeout=None)
     
     @discord.ui.button(label="Toggle Background", style=ButtonStyle.green)
     async def toggle_background(self, interaction: discord.Interaction, button: discord.ui.Button):

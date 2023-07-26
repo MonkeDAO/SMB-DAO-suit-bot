@@ -7,7 +7,6 @@ from config import bot, gen2List, gen3List
 from PIL import Image
 import asyncio
 from io import BytesIO
-import os
 import aiohttp
 
 @bot.tree.command(name="dress-up", description="Dress up your monke!")
