@@ -1,6 +1,7 @@
 from discord.ext import commands
 import discord
 import json
+import socket
 
 with open('config.json') as f:
     config = json.load(f)
@@ -18,7 +19,3 @@ with open('monkeList.json') as f:
 gen3List = {}
 
 helius_tk = config['passkeys']['helius']
-
-imgur_client_id = config['passkeys']['imgur']['client_id']
-
-imgur_client_secret = config['passkeys']['imgur']['client_secret']

@@ -2,7 +2,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import traceback
-from config import bot, dc_tk
+from config import bot, dc_tk, base
 import asyncio
 import logging
 from commands.dress_up import dressup #type: ignore
@@ -39,6 +39,8 @@ async def sync(ctx):
 
 async def main():
     async with bot:
+        web = bot.loop.create_task(run_server())
+        web.add_done_callback(error_handler)
         await bot.start(dc_tk)
 
 asyncio.run(main())

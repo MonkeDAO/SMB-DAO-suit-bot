@@ -22,7 +22,6 @@ class DressUpViewGen2(discord.ui.View):
         self.msgid = id
         self.embed = embed
         self.background = True
-        super().__init__(timeout=None)
     
     @discord.ui.button(label="Toggle Background", style=ButtonStyle.green)
     async def toggle_background(self, interaction: discord.Interaction, button: discord.ui.Button):
