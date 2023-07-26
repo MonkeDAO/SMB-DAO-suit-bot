@@ -12,6 +12,7 @@ import aiohttp
 @bot.tree.command(name="dress-up", description="Dress up your monke!")
 async def dressup(interaction: discord.Interaction, generation: int, monke: int):
     await interaction.response.defer(ephemeral=True)
+    emoji_guild = bot.get_guild(1101931928409612411)
     if (generation != 2 and generation != 3):
         await interaction.followup.send("Invalid generation", ephemeral=True)
         return
@@ -34,7 +35,7 @@ async def dressup(interaction: discord.Interaction, generation: int, monke: int)
         file = discord.File(mybytes, filename="monke.png")
         embed.set_image(url="attachment://monke.png")
         msg = await interaction.followup.send(embed=embed, file=file)
-        view = DressUpViewGen2(monke, img, msg.id, embed)
+        view = DressUpViewGen2(monke, img, msg.id, embed, emoji_guild)
         await msg.edit(view=view)
         
 @dressup.autocomplete("generation")
