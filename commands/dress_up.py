@@ -3,7 +3,12 @@ sys.path.append('..')
 import discord
 from discord.app_commands import Choice
 from views.edit_views import DressUpViewGen2
-from config import bot, gen2List, gen3List, base #type: ignore
+from config import bot, gen2List, gen3List
+from PIL import Image
+import asyncio
+from io import BytesIO
+import os
+import aiohttp
 
 @bot.tree.command(name="dress-up", description="Dress up your monke!")
 async def dressup(interaction: discord.Interaction, generation: int, monke: int):
@@ -15,15 +20,23 @@ async def dressup(interaction: discord.Interaction, generation: int, monke: int)
         for i in gen2List:
             if int(i['mint']["name"].split("#")[1]) == monke:
                 monke = i
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(i['mint']['imageUri']) as resp:
+                        img = await resp.read()
+                        img = await asyncio.get_event_loop().run_in_executor(None, Image.open, BytesIO(img))
                 break
         if type(monke) == int:
             await interaction.followup.send("The monke you tried to use could not be found", ephemeral=True)
             return
-        url = "http://" + base + ":8080" + "/image?gen=2&id=" + str(monke['mint']['name'].split("#")[1]) + "&bg=true"
-        print(url)
         embed = discord.Embed()
-        embed.set_image(url=url)
-        await interaction.followup.send(embed=embed, view=DressUpViewGen2(embed, url))
+        mybytes = BytesIO()
+        img.save(mybytes, format="PNG")
+        mybytes.seek(0)
+        file = discord.File(mybytes, filename="monke.png")
+        embed.set_image(url="attachment://monke.png")
+        msg = await interaction.followup.send(embed=embed, file=file)
+        view = DressUpViewGen2(monke, img, msg.id, embed)
+        await msg.edit(view=view)
         
 @dressup.autocomplete("generation")
 async def genauto(interaction: discord.Interaction, current: str):

@@ -5,18 +5,10 @@ import traceback
 from config import bot, dc_tk, base
 import asyncio
 import logging
-from aiohttp import web
 from commands.dress_up import dressup #type: ignore
 from tasks.tasks import update_gen3
-from web.web import app
 
 logging.basicConfig(level=logging.INFO)
-
-async def run_server():
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, base, 8080)
-    await site.start()
 
 def error_handler(task: asyncio.Task):
     exc = task.exception()
