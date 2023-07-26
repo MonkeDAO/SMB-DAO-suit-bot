@@ -35,7 +35,7 @@ async def dressup(interaction: discord.Interaction, generation: int, monke: int)
         file = discord.File(mybytes, filename="monke.png")
         embed.set_image(url="attachment://monke.png")
         msg = await interaction.followup.send(embed=embed, file=file)
-        view = DressUpViewGen2(monke, img, msg.id)
+        view = DressUpViewGen2(monke, img, msg.id, embed)
         await msg.edit(view=view)
         
 @dressup.autocomplete("generation")

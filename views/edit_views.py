@@ -3,6 +3,8 @@ import discord
 import asyncio
 from io import BytesIO
 from discord.enums import ButtonStyle
+from config import imgur_client_id, imgur_client_secret
+import aiohttp
 
 async def common_color(img: Image) -> tuple:
     pixels = await asyncio.get_event_loop().run_in_executor(None, img.getcolors)
@@ -10,27 +12,47 @@ async def common_color(img: Image) -> tuple:
     return most_common[1]
 
 class DressUpViewGen2(discord.ui.View):
-    def __init__(self, monke : dict, image : Image, id : int):
+    def __init__(self, monke : dict, image : Image, id : int, embed : discord.Embed):
         self.monke = monke
-        self.img  = image
-        self.id = id
+        self.img = image
+        self.imgbytes : BytesIO = BytesIO()
+        asyncio.get_event_loop().run_in_executor(None, self.img.save, self.imgbytes, "PNG")
+        self.imgbytes.seek(0)
+        self.orgimg = Image.frombytes(image.mode, image.size, image.tobytes())
+        self.msgid = id
+        self.embed = embed
+        self.background = True
         super().__init__(timeout=None)
     
-    async def display_new(self, img : Image):
-        pass
-    
-    @discord.ui.button(label="Remove Background", style=ButtonStyle.green)
-    async def remove_background(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(label="Toggle Background", style=ButtonStyle.green)
+    async def toggle_background(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(ephemeral=True)
-        result = await common_color(self.img)
-        pixels = await asyncio.get_event_loop().run_in_executor(None, self.img.getdata)
         newpixels = []
-        for pixel in pixels:
-            if pixel == result:
-                newpixels.append((0,0,0,0))
-            else:
-                newpixels.append(pixel)
-        self.img.putdata(newpixels)
+        if self.background:
+            result = await common_color(self.img)
+            pixels = await asyncio.get_event_loop().run_in_executor(None, self.img.getdata)
+            for pixel in pixels:
+                if pixel == result:
+                    newpixels.append((0,0,0,0))
+                else:
+                    newpixels.append(pixel)
+            self.background = False
+        else:
+            result = await common_color(self.orgimg)
+            pixels = await asyncio.get_event_loop().run_in_executor(None, self.img.getdata)
+            for pixel in pixels:
+                if pixel == (0,0,0,0):
+                    newpixels.append(result)
+                else:
+                    newpixels.append(pixel)
+            self.background = True
+        await asyncio.get_event_loop().run_in_executor(None, self.img.putdata, newpixels)
+        self.imgbytes = BytesIO()
+        await asyncio.get_event_loop().run_in_executor(None, self.img.save, self.imgbytes, "PNG")
+        self.imgbytes.seek(0)
+        file = discord.File(self.imgbytes, filename="monke.png")
+        self.embed.set_image(url="attachment://monke.png")
+        await interaction.followup.edit_message(self.msgid, embed=self.embed, attachments=[file], view=self)
 
 """ Deprecated
 async def generate_image(traits: dict) -> Image:
