@@ -6,22 +6,26 @@ from discord.components import SelectOption
 from discord.enums import ButtonStyle
 import os
     
-async def load_backgrounds(guild: discord.Guild, oldimg : Image) -> tuple[list[SelectOption], dict]:
-    background_options = [SelectOption(label="Default",value="default"), SelectOption(label="None",value="none")]
+async def load_asset(guild: discord.Guild, oldimg : Image, path : str) -> tuple[list[SelectOption], dict]:
+    background_options = [SelectOption(label="Default",value="default")]
     imgdict = {}
-    common = await common_color(oldimg)
-    imgdict["default"] = await asyncio.get_event_loop().run_in_executor(None, Image.new, "RGBA", oldimg.size, common)
-    imgdict["none"] = await asyncio.get_event_loop().run_in_executor(None, Image.new, "RGBA", oldimg.size, (0,0,0,0))
-    for bg in os.listdir("assets/pfp_backgrounds"):
-        if bg == ".DS_Store":
+    if path == "pfp_backgrounds":
+        common = await common_color(oldimg)
+        background_options.append(SelectOption(label="None",value="none"))
+        imgdict["default"] = await asyncio.get_event_loop().run_in_executor(None, Image.new, "RGBA", oldimg.size, common)
+        imgdict["none"] = await asyncio.get_event_loop().run_in_executor(None, Image.new, "RGBA", oldimg.size, (0,0,0,0))
+    else:
+        imgdict["default"] = None
+    for item in os.listdir("assets/" + path):
+        if item == ".DS_Store":
             continue
-        option = SelectOption(label=bg[:-4],value=bg[:-4].replace(" ","").lower())
+        option = SelectOption(label=item[:-4],value=item[:-4].replace(" ","").lower())
         for emoji in guild.emojis:
-            if emoji.name == bg[:-4].replace(" ",""):
+            if emoji.name == item[:-4].replace(" ",""):
                 option.emoji = emoji
                 break
         background_options.append(option)
-        imgdict[bg[:-4].replace(" ","").lower()] = await asyncio.get_event_loop().run_in_executor(None, Image.open, "assets/pfp_backgrounds/" + bg)
+        imgdict[item[:-4].replace(" ","").lower()] = await asyncio.get_event_loop().run_in_executor(None, Image.open, "assets/" + path + "/" + item)
     return background_options, imgdict
  
 async def common_color(img: Image) -> tuple:
@@ -30,13 +34,15 @@ async def common_color(img: Image) -> tuple:
     return most_common[1]
 
 class SelectReturn(discord.ui.Select):
-    def __init__(self, options: list[SelectOption], imgdict: dict, placeholder: str = None):
+    def __init__(self, options: list[SelectOption], imgdict: dict, placeholder: str, type: str):
         self.imgdict = imgdict
+        self.traittype = type
         super().__init__(options=options, placeholder=placeholder)
     
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
-        await self.view.set_background(self.imgdict[self.values[0]], interaction)
+        self.view.traits[self.traittype] = self.imgdict[self.values[0]]
+        await self.view.update_img(interaction)
 
 class DressUpViewGen2(discord.ui.View):
     def __init__(self, monke : dict, image : Image, id : int, embed : discord.Embed, EmojiGuild : discord.Guild):
@@ -46,40 +52,16 @@ class DressUpViewGen2(discord.ui.View):
         asyncio.get_event_loop().run_in_executor(None, self.img.save, self.imgbytes, "PNG")
         self.imgbytes.seek(0)
         self.orgimg = Image.frombytes(image.mode, image.size, image.tobytes())
+        self.transparent = None
         self.msgid = id
         self.embed = embed
+        self.emoji_guild = EmojiGuild
+        self.traits = {"background":"default", "outfit":None}
         super().__init__(timeout=None)
     
-    async def set_background(self, img : Image, interaction : discord.Interaction):
-        newpixels = []
-        result = await common_color(self.orgimg)
-        pixels = await asyncio.get_event_loop().run_in_executor(None, self.orgimg.getdata)
-        for pixel in pixels:
-            if pixel == result:
-                newpixels.append((0,0,0,0))
-            else:
-                newpixels.append(pixel)
-        blankimg = await asyncio.get_event_loop().run_in_executor(None, Image.new, "RGBA", self.orgimg.size, (0,0,0,0))
-        await asyncio.get_event_loop().run_in_executor(None, blankimg.putdata, newpixels)
-        self.img = await asyncio.get_event_loop().run_in_executor(None, Image.alpha_composite, img, blankimg)
-        self.imgbytes = BytesIO()
-        await asyncio.get_event_loop().run_in_executor(None, self.img.save, self.imgbytes, "PNG")
-        self.imgbytes.seek(0)
-        file = discord.File(self.imgbytes, filename="monke.png")
-        self.embed.set_image(url="attachment://monke.png")
-        self.clear_items()
-        self.add_item(self.pick_background)
-        await interaction.followup.edit_message(self.msgid, embed=self.embed, attachments=[file], view=self)
-    
-    @discord.ui.button(label="Background", style=ButtonStyle.green)
-    async def pick_background(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.clear_items()
-        background_options, self.backgrounddict = await load_backgrounds(interaction.guild, self.orgimg)
-        self.add_item(SelectReturn(background_options, placeholder="Pick a background", imgdict=self.backgrounddict))
-        await interaction.response.edit_message(view=self)
-        """
-        newpixels = []
-        if self.background:
+    async def update_img(self, interaction : discord.Interaction):
+        if not self.transparent:
+            newpixels = []
             result = await common_color(self.img)
             pixels = await asyncio.get_event_loop().run_in_executor(None, self.img.getdata)
             for pixel in pixels:
@@ -87,24 +69,46 @@ class DressUpViewGen2(discord.ui.View):
                     newpixels.append((0,0,0,0))
                 else:
                     newpixels.append(pixel)
-            self.background = False
+            self.transparent = await asyncio.get_event_loop().run_in_executor(None, Image.new, "RGBA", self.img.size, (0,0,0,0))
+            await asyncio.get_event_loop().run_in_executor(None, self.transparent.putdata, newpixels)
+        if self.traits["background"] == "default":
+            try:
+                backgroundimg = self.backgrounddict["default"]
+            except:
+                background_options, self.backgrounddict = await load_asset(self.emoji_guild, self.orgimg, "pfp_backgrounds")
+                backgroundimg = self.backgrounddict["default"]
         else:
-            result = await common_color(self.orgimg)
-            pixels = await asyncio.get_event_loop().run_in_executor(None, self.img.getdata)
-            for pixel in pixels:
-                if pixel == (0,0,0,0):
-                    newpixels.append(result)
-                else:
-                    newpixels.append(pixel)
-            self.background = True
-        await asyncio.get_event_loop().run_in_executor(None, self.img.putdata, newpixels)
+            backgroundimg = self.traits["background"]
+        baseimage = await asyncio.get_event_loop().run_in_executor(None, Image.alpha_composite, backgroundimg, self.transparent)
+        if self.traits["outfit"]:
+            if self.traits["outfit"].size != self.img.size:
+                self.traits["outfit"] = await asyncio.get_event_loop().run_in_executor(None, self.traits["outfit"].resize, self.img.size)
+            baseimage = await asyncio.get_event_loop().run_in_executor(None, Image.alpha_composite, baseimage, self.traits['outfit'])
+        self.img = baseimage
         self.imgbytes = BytesIO()
         await asyncio.get_event_loop().run_in_executor(None, self.img.save, self.imgbytes, "PNG")
         self.imgbytes.seek(0)
         file = discord.File(self.imgbytes, filename="monke.png")
         self.embed.set_image(url="attachment://monke.png")
+        self.clear_items()
+        self.add_item(self.pick_background)
+        self.add_item(self.pick_outfit)
         await interaction.followup.edit_message(self.msgid, embed=self.embed, attachments=[file], view=self)
-        """
+    
+    @discord.ui.button(label="Background", style=ButtonStyle.green)
+    async def pick_background(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.clear_items()
+        background_options, self.backgrounddict = await load_asset(self.emoji_guild, self.orgimg, "pfp_backgrounds")
+        self.add_item(SelectReturn(background_options, placeholder="Pick a background", imgdict=self.backgrounddict, type="background"))
+        await interaction.response.edit_message(view=self)
+    
+    @discord.ui.button(label="Outfit", style=ButtonStyle.green)
+    async def pick_outfit(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.clear_items()
+        outfit_options, self.outfitdict = await load_asset(self.emoji_guild, self.orgimg, "outfits")
+        self.add_item(SelectReturn(outfit_options, placeholder="Pick an outfit", imgdict=self.outfitdict, type="outfit"))
+        await interaction.response.edit_message(view=self)
+
 """ Deprecated
 async def generate_image(traits: dict) -> Image:
     image = traits["Type"]
