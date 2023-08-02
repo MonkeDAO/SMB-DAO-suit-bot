@@ -16,7 +16,7 @@ async def load_asset(guild: discord.Guild, oldimg : Image, path : str) -> tuple[
         background_options.append(SelectOption(label="None",value="none"))
         imgdict["default"] = await asyncio.get_event_loop().run_in_executor(None, Image.new, "RGBA", oldimg.size, common)
         imgdict["none"] = await asyncio.get_event_loop().run_in_executor(None, Image.new, "RGBA", oldimg.size, (0,0,0,0))
-    elif path == "wallpapers":
+    elif path == "wallpapers" or path == "watchfaces":
         pass
     else:
         imgdict["default"] = None
@@ -106,7 +106,7 @@ class SelectReturn(discord.ui.Select):
     
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
-        if self.traittype == "wallpaper":
+        if self.traittype == "wallpaper" or self.traittype == "watchface":
             bg = self.imgdict[self.values[0]]
             if not self.view.transparent:
                 newpixels = []
@@ -128,8 +128,12 @@ class SelectReturn(discord.ui.Select):
                 if self.view.traits["sombrero"].size != self.view.img.size:
                     self.view.traits["sombrero"] = await asyncio.get_event_loop().run_in_executor(None, self.view.traits["sombrero"].resize, self.view.img.size)
                 baseimage = await asyncio.get_event_loop().run_in_executor(None, Image.alpha_composite, baseimage, self.view.traits['sombrero'])
-            monke = await asyncio.get_event_loop().run_in_executor(None, baseimage.resize, (baseimage.width*5, baseimage.height*5))
-            await asyncio.get_event_loop().run_in_executor(None, bg.paste, monke, (0,1920), monke)
+            if self.traittype == "wallpaper":
+                monke = await asyncio.get_event_loop().run_in_executor(None, baseimage.resize, (baseimage.width*5, baseimage.height*5))
+                await asyncio.get_event_loop().run_in_executor(None, bg.paste, monke, (0,1920), monke)
+            else:
+                monke = await asyncio.get_event_loop().run_in_executor(None, baseimage.resize, (int(baseimage.width*2.3), int(baseimage.height*2.3)))
+                await asyncio.get_event_loop().run_in_executor(None, bg.paste, monke, (-40,85), monke)
             self.view.img = bg
             self.view.imgbytes = BytesIO()
             await asyncio.get_event_loop().run_in_executor(None, self.view.img.save, self.view.imgbytes, "PNG")
@@ -262,11 +266,18 @@ class DressUpViewGen2(discord.ui.View):
         self.add_item(SelectReturn(gif_options, placeholder="Pick a gif", imgdict=self.gifdict, type="gif"))
         await interaction.response.edit_message(view=self)
     
-    @discord.ui.button(label="Save As Wallpaper (gif and bg not supported)", style=ButtonStyle.green)
+    @discord.ui.button(label="Save As Wallpaper", style=ButtonStyle.green)
     async def save_wallpaper(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.clear_items()
         wallpaper_options, self.wallpaperdict = await load_asset(self.emoji_guild, self.orgimg, "wallpapers")
         self.add_item(SelectReturn(wallpaper_options, placeholder="Pick a wallpaper", imgdict=self.wallpaperdict, type="wallpaper"))
+        await interaction.response.edit_message(view=self)
+    
+    @discord.ui.button(label="Save As Watch Face", style=ButtonStyle.green)
+    async def save_watchface(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.clear_items()
+        watchface_options, self.watchfacedict = await load_asset(self.emoji_guild, self.orgimg, "watchfaces")
+        self.add_item(SelectReturn(watchface_options, placeholder="Pick a watch face", imgdict=self.watchfacedict, type="watchface"))
         await interaction.response.edit_message(view=self)
 
 """ Deprecated
