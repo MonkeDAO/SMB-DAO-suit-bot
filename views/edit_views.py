@@ -186,7 +186,7 @@ class DressUpViewGen2(discord.ui.View):
                     newpixels.append(pixel)
             self.transparent = await asyncio.get_event_loop().run_in_executor(None, Image.new, "RGBA", self.img.size, (0,0,0,0))
             await asyncio.get_event_loop().run_in_executor(None, self.transparent.putdata, newpixels)
-        if self.traits["background"] == "default":
+        if self.traits["background"] == "default" or self.traits["gif"]:
             try:
                 backgroundimg = self.backgrounddict["default"]
             except:
@@ -243,7 +243,7 @@ class DressUpViewGen2(discord.ui.View):
     @discord.ui.button(label="Background", style=ButtonStyle.green)
     async def pick_background(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.clear_items()
-        background_options, self.backgrounddict = await load_asset(self.emoji_guild,"pfp_backgrounds")
+        background_options, self.backgrounddict = await load_asset(self.emoji_guild,"pfp_backgrounds", self.orgimg)
         self.add_item(SelectReturn(background_options, placeholder="Pick a background", imgdict=self.backgrounddict, type="background"))
         await interaction.response.edit_message(view=self)
     
@@ -265,9 +265,6 @@ class DressUpViewGen2(discord.ui.View):
     async def pick_gif(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.clear_items()
         gif_options, self.gifdict = await load_asset(self.emoji_guild, "gifs")
-        for option in gif_options:
-            if option.label == "Welcome":
-                gif_options.remove(option)
         self.add_item(SelectReturn(gif_options, placeholder="Pick a gif", imgdict=self.gifdict, type="gif"))
         await interaction.response.edit_message(view=self)
     

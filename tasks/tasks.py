@@ -32,8 +32,6 @@ async def update_gen3():
             if json['result']['total'] < json['result']['limit']:
                 break
             page += 1
-    print("Updated gen3")
-    print(len(gen3List))
     g3list = gen3List
 
 async def fetch_gen3_list() -> list:
