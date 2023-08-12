@@ -208,7 +208,7 @@ class DressUpViewGen2(discord.ui.View):
             for f in ImageSequence.Iterator(animated_gif):
                 frame = await asyncio.get_event_loop().run_in_executor(None, f.convert, "RGBA")
                 monke = baseimage.copy()
-                monke = await asyncio.get_event_loop().run_in_executor(None, Image.alpha_composite, monke, frame)
+                await asyncio.get_event_loop().run_in_executor(None, monke.paste, frame, (0,0), frame)
                 frames.append(monke)
             baseimage = frames
         else:
