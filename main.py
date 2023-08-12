@@ -6,6 +6,7 @@ from config import bot, dc_tk
 import asyncio
 import logging
 from commands.dress_up import dressup #type: ignore
+from commands.banner import banner #type: ignore
 from tasks.tasks import update_gen3
 
 logging.basicConfig(level=logging.INFO)

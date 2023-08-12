@@ -1,14 +1,15 @@
 from discord.ext import tasks
 import sys
 sys.path.append("..") 
-from config import bot, gen3List, helius_tk #type: ignore
+from config import bot, helius_tk #type: ignore
 import aiohttp
 
 @tasks.loop(minutes=10)
 async def update_gen3():
+    global g3list
     await bot.wait_until_ready()
     link = f"https://rpc.helius.xyz/?api-key={helius_tk}"
-    gen3list = []
+    gen3List = []
     page = 1
     while True:
         payload = {
@@ -27,9 +28,14 @@ async def update_gen3():
             json = await result.json()
             for item in json['result']['items']:
                 needed_data = {"name":item['content']['metadata']['name'], "imageUri":item['content']['files'][0]['uri'], "attributes":item['content']['metadata']['attributes'], "onchainId":item['id']}
-                gen3list.append(needed_data)
+                gen3List.append(needed_data)
             if json['result']['total'] < json['result']['limit']:
                 break
             page += 1
-    gen3List = gen3list
+    print("Updated gen3")
+    print(len(gen3List))
+    g3list = gen3List
+
+async def fetch_gen3_list() -> list:
+    return g3list
             

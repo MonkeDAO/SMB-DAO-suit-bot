@@ -8,15 +8,15 @@ import os
 from math import ceil
 import functools
 
-async def load_asset(guild: discord.Guild, oldimg : Image, path : str) -> tuple[list[SelectOption], dict]:
-    background_options = []
+async def load_asset(guild: discord.Guild, path : str, oldimg : Image = None) -> tuple[list[SelectOption], dict]:
+    options = []
     imgdict = {}
     if path == "pfp_backgrounds":
         common = await common_color(oldimg)
-        background_options.append(SelectOption(label="None",value="none"))
+        options.append(SelectOption(label="None",value="none"))
         imgdict["default"] = await asyncio.get_event_loop().run_in_executor(None, Image.new, "RGBA", oldimg.size, common)
         imgdict["none"] = await asyncio.get_event_loop().run_in_executor(None, Image.new, "RGBA", oldimg.size, (0,0,0,0))
-    elif path == "wallpapers" or path == "watchfaces":
+    elif path == "wallpapers" or path == "watchfaces" or path == "banners":
         pass
     else:
         imgdict["default"] = None
@@ -29,10 +29,11 @@ async def load_asset(guild: discord.Guild, oldimg : Image, path : str) -> tuple[
         for emoji in guild.emojis:
             if emoji.name == item[:-4].replace(" ",""):
                 option.emoji = emoji
-                break
-        background_options.append(option)
+                if path != "banner" and item[:-4].replace(" ","").lower() not in ["black","green","blue"]:
+                    break
+        options.append(option)
         imgdict[item[:-4].replace(" ","").lower()] = await asyncio.get_event_loop().run_in_executor(None, Image.open, "assets/" + path + "/" + item)
-    return background_options, imgdict
+    return options, imgdict
  
 async def common_color(img: Image) -> tuple:
     pixels = await asyncio.get_event_loop().run_in_executor(None, img.getcolors)
@@ -189,7 +190,7 @@ class DressUpViewGen2(discord.ui.View):
             try:
                 backgroundimg = self.backgrounddict["default"]
             except:
-                background_options, self.backgrounddict = await load_asset(self.emoji_guild, self.orgimg, "pfp_backgrounds")
+                background_options, self.backgrounddict = await load_asset(self.emoji_guild, "pfp_backgrounds", self.orgimg)
                 backgroundimg = self.backgrounddict["default"]
         else:
             backgroundimg = self.traits["background"]
@@ -236,49 +237,166 @@ class DressUpViewGen2(discord.ui.View):
         self.add_item(self.pick_sombrero)
         self.add_item(self.pick_gif)
         self.add_item(self.save_wallpaper)
+        self.add_item(self.save_watchface)
         await interaction.followup.edit_message(self.msgid, embed=self.embed, attachments=[file], view=self)
     
     @discord.ui.button(label="Background", style=ButtonStyle.green)
     async def pick_background(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.clear_items()
-        background_options, self.backgrounddict = await load_asset(self.emoji_guild, self.orgimg, "pfp_backgrounds")
+        background_options, self.backgrounddict = await load_asset(self.emoji_guild,"pfp_backgrounds")
         self.add_item(SelectReturn(background_options, placeholder="Pick a background", imgdict=self.backgrounddict, type="background"))
         await interaction.response.edit_message(view=self)
     
     @discord.ui.button(label="Outfit", style=ButtonStyle.green)
     async def pick_outfit(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.clear_items()
-        outfit_options, self.outfitdict = await load_asset(self.emoji_guild, self.orgimg, "outfits")
+        outfit_options, self.outfitdict = await load_asset(self.emoji_guild, "outfits")
         self.add_item(SelectReturn(outfit_options, placeholder="Pick an outfit", imgdict=self.outfitdict, type="outfit"))
         await interaction.response.edit_message(view=self)
     
     @discord.ui.button(label="Sombrero", style=ButtonStyle.green)
     async def pick_sombrero(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.clear_items()
-        sombrero_options, self.sombrerodict = await load_asset(self.emoji_guild, self.orgimg, "sombreros")
+        sombrero_options, self.sombrerodict = await load_asset(self.emoji_guild, "sombreros")
         self.add_item(SelectReturn(sombrero_options, placeholder="Pick a sombrero", imgdict=self.sombrerodict, type="sombrero"))
         await interaction.response.edit_message(view=self)
         
     @discord.ui.button(label="Gif", style=ButtonStyle.green)
     async def pick_gif(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.clear_items()
-        gif_options, self.gifdict = await load_asset(self.emoji_guild, self.orgimg, "gifs")
+        gif_options, self.gifdict = await load_asset(self.emoji_guild, "gifs")
+        for option in gif_options:
+            if option.label == "Welcome":
+                gif_options.remove(option)
         self.add_item(SelectReturn(gif_options, placeholder="Pick a gif", imgdict=self.gifdict, type="gif"))
         await interaction.response.edit_message(view=self)
     
     @discord.ui.button(label="Save As Wallpaper", style=ButtonStyle.green)
     async def save_wallpaper(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.clear_items()
-        wallpaper_options, self.wallpaperdict = await load_asset(self.emoji_guild, self.orgimg, "wallpapers")
+        wallpaper_options, self.wallpaperdict = await load_asset(self.emoji_guild, "wallpapers")
         self.add_item(SelectReturn(wallpaper_options, placeholder="Pick a wallpaper", imgdict=self.wallpaperdict, type="wallpaper"))
         await interaction.response.edit_message(view=self)
     
     @discord.ui.button(label="Save As Watch Face", style=ButtonStyle.green)
     async def save_watchface(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.clear_items()
-        watchface_options, self.watchfacedict = await load_asset(self.emoji_guild, self.orgimg, "watchfaces")
+        watchface_options, self.watchfacedict = await load_asset(self.emoji_guild, "watchfaces")
         self.add_item(SelectReturn(watchface_options, placeholder="Pick a watch face", imgdict=self.watchfacedict, type="watchface"))
         await interaction.response.edit_message(view=self)
+
+class DressUpViewGen3(discord.ui.View):
+    def __init__(self, monke : dict, image : Image, id : int, embed : discord.Embed, EmojiGuild : discord.Guild):
+        self.monke = monke
+        self.img = image
+        self.imgbytes : BytesIO = BytesIO()
+        asyncio.get_event_loop().run_in_executor(None, self.img.save, self.imgbytes, "PNG")
+        self.imgbytes.seek(0)
+        self.orgimg = Image.frombytes(image.mode, image.size, image.tobytes())
+        self.msgid = id
+        self.embed = embed
+        self.emoji_guild = EmojiGuild
+        self.imgtype = "png"
+        self.traits = {"gif":None}
+        super().__init__(timeout=None)
+    
+    async def update_img(self, interaction : discord.Interaction):
+        if self.traits["gif"]:
+            self.imgtype = "gif"
+            animated_gif = self.traits["gif"]
+            frames = []
+            for f in ImageSequence.Iterator(animated_gif):
+                frame = await asyncio.get_event_loop().run_in_executor(None, f.convert, "RGBA")
+                monke = self.orgimg.copy()
+                await asyncio.get_event_loop().run_in_executor(None, monke.paste, frame, (0,0), frame)
+                frames.append(monke)
+            baseimage = frames
+        else:
+            self.imgtype = "png"
+        if self.imgtype == "png":
+            self.img = baseimage
+            self.imgbytes = BytesIO()
+            await asyncio.get_event_loop().run_in_executor(None, self.img.save, self.imgbytes, "PNG")
+            self.imgbytes.seek(0)
+            file = discord.File(self.imgbytes, filename="monke.png")
+            self.embed.set_image(url="attachment://monke.png")
+        else:
+            self.imgbytes = BytesIO()
+            if animated_gif == self.gifdict["welcome"]:
+                await asyncio.get_event_loop().run_in_executor(None, functools.partial(baseimage[0].save, self.imgbytes, "GIF", save_all=True, append_images=baseimage[1:], duration=500, loop=0))
+            else:
+                await asyncio.get_event_loop().run_in_executor(None, functools.partial(baseimage[0].save, self.imgbytes, "GIF", save_all=True, append_images=baseimage[1:], loop=0))
+            self.imgbytes.seek(0)
+            file = discord.File(self.imgbytes, filename="monkegif.gif")
+            self.embed.set_image(url="attachment://monkegif.gif")
+        self.clear_items()
+        self.add_item(self.pick_gif)
+        await interaction.followup.edit_message(self.msgid, embed=self.embed, attachments=[file], view=self)
+        
+    @discord.ui.button(label="Gif", style=ButtonStyle.green)
+    async def pick_gif(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.clear_items()
+        gif_options, self.gifdict = await load_asset(self.emoji_guild, "gifs")
+        self.add_item(SelectReturn(gif_options, placeholder="Pick a gif", imgdict=self.gifdict, type="gif"))
+        await interaction.response.edit_message(view=self)
+
+class BannerSelect(discord.ui.Select):
+    def __init__(self,options):
+        super().__init__(placeholder="Pick your banner!", options=options)
+    
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        self.view.remove_item(self)
+        self.view.add_item(BannerSelect(self.options))
+        self.view.banner = self.view.bannerdict[interaction.data["values"][0]]
+        await self.view.change_banner(interaction)
+
+class BannerView(discord.ui.View):
+    def __init__(self, monkes: [Image], banner : Image, bannerdict : dict, msg : discord.Message):
+        self.monkes = monkes
+        self.banner = banner
+        self.bannerdict = bannerdict
+        self.orgsize = 384
+        self.msgid = msg.id
+        super().__init__(timeout=None)
+    
+    async def change_banner(self, interaction: discord.Interaction):
+        bg = self.banner.copy()
+        banner_name = [k for k, v in self.bannerdict.items() if v == self.banner][0]
+        for monke in self.monkes:
+            if monke.size != (self.orgsize,self.orgsize):
+                monke = await asyncio.get_event_loop().run_in_executor(None, monke.resize, (int(self.orgsize*1.5),int(self.orgsize*1.5)))
+        if banner_name == "Yellow Blue" or banner_name == "Blue Green Wave":
+            self.monkes[0] = await asyncio.get_event_loop().run_in_executor(None, self.monkes[0].resize, (int(self.orgsize*2.60416666667),int(self.orgsize*2.60416666667)))
+        for i, v in enumerate(self.monkes):
+            if banner_name == "Yellow Blue" or banner_name == "Blue Green Wave":
+                if i == 0:
+                    await asyncio.get_event_loop().run_in_executor(None, bg.paste, v, (2040, 0), v)
+                else:
+                    await asyncio.get_event_loop().run_in_executor(None, bg.paste, v, (1500-((i-1)*400), 424), v)
+            elif banner_name == "Black" or banner_name == "Blue" or banner_name == "Green":
+                await asyncio.get_event_loop().run_in_executor(None, bg.paste, v, (1500-(i*400), 424), v)
+            else:
+                await asyncio.get_event_loop().run_in_executor(None, bg.paste, v, (2000-(i*400), 424), v)
+        imgbytes = BytesIO()
+        await asyncio.get_event_loop().run_in_executor(None, bg.save, imgbytes, "PNG")
+        imgbytes.seek(0)
+        file = discord.File(imgbytes, filename="monke.png")
+        embed = discord.Embed()
+        embed.set_image(url="attachment://monke.png")
+        self.banner = bg
+        await interaction.followup.edit_message(message_id=self.msgid,embed=embed, attachments=[file], view=self)
+    
+    @discord.ui.button(label="Save", style=ButtonStyle.green, row=1)
+    async def save(self, interaction: discord.Interaction, button: discord.ui.Button):
+        imgbytes = BytesIO()
+        await asyncio.get_event_loop().run_in_executor(None, self.banner.save, imgbytes, "PNG")
+        imgbytes.seek(0)
+        file = discord.File(imgbytes, filename="monke.png")
+        embed = discord.Embed()
+        embed.set_image(url="attachment://monke.png")
+        await interaction.response.edit_message(embed=embed, view=ImageView(self.banner, interaction), attachments=[file])
+        
 
 """ Deprecated
 async def generate_image(traits: dict) -> Image:
