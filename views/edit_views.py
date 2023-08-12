@@ -23,8 +23,6 @@ async def load_asset(guild: discord.Guild, path : str, oldimg : Image = None) ->
     for item in os.listdir("assets/" + path):
         if item == ".DS_Store":
             continue
-        if item == "welcome.gif":
-            continue
         option = SelectOption(label=item[:-4],value=item[:-4].replace(" ","").lower())
         for emoji in guild.emojis:
             if emoji.name == item[:-4].replace(" ",""):
