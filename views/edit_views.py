@@ -25,10 +25,12 @@ async def load_asset(guild: discord.Guild, path : str, oldimg : Image = None) ->
             continue
         option = SelectOption(label=item[:-4],value=item[:-4].replace(" ","").lower())
         for emoji in guild.emojis:
+            print(emoji.name)
             if emoji.name == item[:-4].replace(" ",""):
                 option.emoji = emoji
-                if (path not in ["banner","watchfaces","wallpapers"] and item[:-4].replace(" ","").lower() not in ["black","green","blue","greenbananas","bluebananas","whitebananas"]):
-                    break
+                if path == "banners" and item[:-4].replace(" ","").lower() in ["black","green","blue","greenbananas","bluebananas","whitebananas"]:
+                    continue
+                break
         options.append(option)
         imgdict[item[:-4].replace(" ","").lower()] = await asyncio.get_event_loop().run_in_executor(None, Image.open, "assets/" + path + "/" + item)
     return options, imgdict
