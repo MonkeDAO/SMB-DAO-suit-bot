@@ -1,7 +1,6 @@
 from discord.ext import commands
 import discord
 import json
-import socket
 
 with open('config.json') as f:
     config = json.load(f)
@@ -15,7 +14,5 @@ dc_tk = config['passkeys']['discord']
 
 with open('monkeList.json') as f:
     gen2List = json.load(f)
-    
-gen3List = {}
 
 helius_tk = config['passkeys']['helius']
