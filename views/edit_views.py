@@ -7,6 +7,7 @@ from discord.enums import ButtonStyle
 import os
 from math import ceil
 import functools
+from config import bot
 
 async def load_asset(guild: discord.Guild, path : str, oldimg : Image = None) -> tuple[list[SelectOption], dict]:
     options = []
@@ -25,7 +26,6 @@ async def load_asset(guild: discord.Guild, path : str, oldimg : Image = None) ->
             continue
         option = SelectOption(label=item[:-4],value=item[:-4].replace(" ","").lower())
         for emoji in guild.emojis:
-            print(emoji.name)
             if emoji.name == item[:-4].replace(" ",""):
                 option.emoji = emoji
                 if path == "banners" and item[:-4].replace(" ","").lower() in ["black","green","blue","greenbananas","bluebananas","whitebananas"]:
@@ -141,6 +141,15 @@ class SelectReturn(discord.ui.Select):
             self.view.imgbytes.seek(0)
             file = discord.File(self.view.imgbytes, filename="monke.png")
             self.view.embed.set_image(url="attachment://monke.png")
+            chan = bot.get_channel(888515872405213194)
+            if chan:
+                self.view.imgbytes.seek(0)
+                file2 = discord.File(self.view.imgbytes, filename="monke2.png")
+                chanembed = discord.Embed(color=discord.Color.blurple())
+                chanembed.set_author(name=interaction.user.name, icon_url=interaction.user.avatar.url)
+                chanembed.set_image(url="attachment://monke2.png")
+                await chan.send(embed=chanembed, files=[file2])
+            self.view.imgbytes.seek(0)
             await interaction.followup.edit_message(message_id=self.view.msgid, embed=self.view.embed, view=ImageView(bg, interaction), attachments=[file])
         else:
             if self.values[0].startswith("newpage"):
@@ -238,6 +247,7 @@ class DressUpViewGen2(discord.ui.View):
         self.add_item(self.pick_gif)
         self.add_item(self.save_wallpaper)
         self.add_item(self.save_watchface)
+        self.add_item(self.save_as_is)
         await interaction.followup.edit_message(self.msgid, embed=self.embed, attachments=[file], view=self)
     
     @discord.ui.button(label="Background", style=ButtonStyle.green)
@@ -267,6 +277,24 @@ class DressUpViewGen2(discord.ui.View):
         gif_options, self.gifdict = await load_asset(self.emoji_guild, "gifs")
         self.add_item(SelectReturn(gif_options, placeholder="Pick a gif", imgdict=self.gifdict, type="gif"))
         await interaction.response.edit_message(view=self)
+
+    @discord.ui.button(label="Save As Is", style=ButtonStyle.green, row=1)
+    async def save_as_is(self, interaction: discord.Interaction, button: discord.ui.Button):
+        imgbytes = BytesIO()
+        await asyncio.get_event_loop().run_in_executor(None, self.img.save, imgbytes, "PNG")
+        imgbytes.seek(0)
+        file = discord.File(imgbytes, filename="monke.png")
+        embed = discord.Embed()
+        embed.set_image(url="attachment://monke.png")
+        await interaction.response.edit_message(embed=embed, view=ImageView(self.img, interaction), attachments=[file])
+        chan = bot.get_channel(888515872405213194)
+        if chan:
+            imgbytes.seek(0)
+            file2 = discord.File(imgbytes, filename="monke2.png")
+            chanembed = discord.Embed(color=discord.Color.blurple())
+            chanembed.set_author(name=interaction.user.name, icon_url=interaction.user.avatar.url)
+            chanembed.set_image(url="attachment://monke2.png")
+            await chan.send(embed=chanembed, files=[file2])
     
     @discord.ui.button(label="Save As Wallpaper", style=ButtonStyle.green)
     async def save_wallpaper(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -393,66 +421,11 @@ class BannerView(discord.ui.View):
         embed = discord.Embed()
         embed.set_image(url="attachment://monke.png")
         await interaction.response.edit_message(embed=embed, view=ImageView(self.banner, interaction), attachments=[file])
-        
-
-""" Deprecated
-async def generate_image(traits: dict) -> Image:
-    image = traits["Type"]
-    sortedtraits = {"Type":traits["Type"], "Clothes":traits["Clothes"], "Ears":traits["Ears"], "Eyes":traits["Eyes"], "Mouth":traits["Mouth"]}
-    for k, v in sortedtraits.items():
-        if v == None:
-            continue
-        else:
-            image = await asyncio.get_event_loop().run_in_executor(None, Image.alpha_composite, image, v)
-    return image
-    
-class BaseSelect(discord.ui.Select):
-    def __init__(self, name: str, traits: dict, view : discord.ui.View, id : int):
-        options = []
-        for trait in traits.keys():
-            try:
-                emoji = [em for em in view.emoji_guild.emojis if em.name == trait.replace(" ","")][0]
-            except:
-                emoji = None
-            options.append(discord.SelectOption(label=trait,value=trait,emoji=emoji))
-        self.name = name
-        self.lastview = view
-        self.msgid = id
-        super().__init__(placeholder="Pick a trait", options=options)
-    
-    async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
-        selected = self.values[0]
-        self.lastview.selected_traits[self.name] = self.lastview.traitdict[self.name][selected]
-        img = await generate_image(self.lastview.selected_traits)
-        embed = self.lastview.embed
-        bytes = BytesIO()
-        img.save(bytes, format="PNG")
-        bytes.seek(0)
-        file = discord.File(bytes, filename="monke.png")
-        embed.set_image(url="attachment://monke.png")
-        await interaction.followup.edit_message(self.msgid, embed=embed, attachments=[file], view=self.lastview)
-
-class BaseButton(discord.ui.Button):
-    def __init__(self, name: str, traits: dict, view : discord.ui.View, id : int):
-        self.name = name
-        self.traits = traits
-        self.lastview = view
-        self.msgid = id
-        super().__init__(style=ButtonStyle.green, label=name)
-    
-    async def callback(self, interaction: discord.Interaction):
-        selectview = discord.ui.View().add_item(BaseSelect(self.name,self.traits,self.lastview,self.msgid))
-        await interaction.response.edit_message(view=selectview)
-
-class DressUpView(discord.ui.View):
-    def __init__(self, gen: int, embed: discord.Embed, template: dict, traitdict: dict, emoji_guild: discord.Guild):
-        super().__init__(timeout=None)
-        self.embed = embed
-        self.traitdict = traitdict
-        self.selected_traits = template
-        self.emoji_guild = emoji_guild
-"""
-        
-    
-    
+        chan = bot.get_channel(888515872405213194)
+        if chan:
+            imgbytes.seek(0)
+            file2 = discord.File(imgbytes, filename="monke2.png")
+            chanembed = discord.Embed(color=discord.Color.blurple())
+            chanembed.set_author(name=interaction.user.name, icon_url=interaction.user.avatar.url)
+            chanembed.set_image(url="attachment://monke2.png")
+            await chan.send(embed=chanembed, files=[file2])

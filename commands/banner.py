@@ -36,7 +36,7 @@ async def banner(interaction: discord.Interaction, monke1 : int = None, monke2 :
                         img = await asyncio.get_event_loop().run_in_executor(None, transparent.resize, (int(img.width*1.5), int(img.height*1.5)))
                         monkedict[monke] = img
     monkedict = {k: v for k, v in monkedict.items() if v is not None}
-    _, bannerdict = await load_asset(emoji_guild, "banners")
+    options, bannerdict = await load_asset(emoji_guild, "banners")
     default = bannerdict["black"]
     for i, v in enumerate(monkedict.values()):
         await asyncio.get_event_loop().run_in_executor(None, default.paste, v, (1500-(i*400), 424), v)
@@ -48,7 +48,7 @@ async def banner(interaction: discord.Interaction, monke1 : int = None, monke2 :
     embed.set_image(url="attachment://monke.png")
     msg = await interaction.followup.send(file=file, embed=embed, ephemeral=True)
     view = BannerView(list(monkedict.values()), bannerdict["black"], bannerdict, msg)
-    view.add_item(BannerSelect(_))
+    view.add_item(BannerSelect(options))
     await msg.edit(view=view)
 
 @banner.autocomplete("monke1")

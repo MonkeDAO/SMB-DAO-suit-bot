@@ -27,8 +27,11 @@ async def update_gen3():
             result = await session.post(link, json=payload)
             json = await result.json()
             for item in json['result']['items']:
-                needed_data = {"name":item['content']['metadata']['name'], "imageUri":item['content']['files'][0]['uri'], "attributes":item['content']['metadata']['attributes'], "onchainId":item['id']}
-                gen3List.append(needed_data)
+                try:
+                    needed_data = {"name":item['content']['metadata']['name'], "imageUri":item['content']['files'][0]['uri'], "attributes":item['content']['metadata']['attributes'], "onchainId":item['id']}
+                    gen3List.append(needed_data)
+                except:
+                    pass
             if json['result']['total'] < json['result']['limit']:
                 break
             page += 1
