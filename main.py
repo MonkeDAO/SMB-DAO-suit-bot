@@ -46,7 +46,17 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
     if 1123193060982001674 not in [role.id for role in member.roles]: 
         await msg.remove_reaction(payload.emoji, member)
         return
-
+    
+@bot.event
+async def on_member_update(before: discord.Member, after: discord.Member):
+    if 1123193060982001674 in [role.id for role in before.roles] and 1123193060982001674 not in [role.id for role in after.roles]:
+        chan = guild.get_channel(1152345132914462810)
+        async for message in chan.history(limit=100):
+            for reaction in message.reactions:
+                users = [user.id async for user in reaction.users() if isinstance(user, discord.Member)]
+                if after.id in users:
+                    await reaction.remove(after)   
+    
 @bot.command(name="sync")
 @commands.is_owner()
 async def sync(ctx):
