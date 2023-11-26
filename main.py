@@ -50,7 +50,7 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
 @bot.event
 async def on_member_update(before: discord.Member, after: discord.Member):
     if 1123193060982001674 in [role.id for role in before.roles] and 1123193060982001674 not in [role.id for role in after.roles]:
-        chan = guild.get_channel(1152345132914462810)
+        chan = after.guild.get_channel(1152345132914462810)
         async for message in chan.history(limit=100):
             for reaction in message.reactions:
                 users = [user.id async for user in reaction.users() if isinstance(user, discord.Member)]
